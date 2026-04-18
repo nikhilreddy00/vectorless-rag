@@ -2,7 +2,7 @@
   <img src="assets/ui-landing.png" alt="Vectorless RAG — Web Interface" width="100%">
 </p>
 
-<h1 align="center">🌲 Vectorless RAG for SEC Filings</h1>
+<h1 align="center">🌲 Vectorless RAG for Apple SEC Filings</h1>
 
 <p align="center">
   <strong>Tree-Based Reasoning Retrieval — No Vectors, No Embeddings, No Chunking</strong>
