@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vectorless RAG — PageIndex for SEC Filings</title>
+    <meta name="description" content="Tree-based reasoning retrieval for SEC 10-K filings using PageIndex, without vector databases or embeddings">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ─── Header ─────────────────────────────────── -->
+<header class="header">
+    <div class="header-content">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <div>
+                <h1>Vectorless RAG</h1>
+                <p class="subtitle">PageIndex · Tree-Based Reasoning · No Embeddings</p>
+            </div>
+        </div>
+        <div class="header-badges">
+            <span class="badge badge-green">
+                <span class="badge-dot"></span>
+                <span id="filing-count">0</span> Filings Indexed
+            </span>
+            <span class="badge badge-green" id="usage-badge">5 queries left</span>
+            <span class="badge badge-purple">Claude Sonnet</span>
+        </div>
+    </div>
+</header>
+
+<!-- ─── Main Layout ────────────────────────────── -->
+<main class="main-layout">
+
+    <!-- Left Panel: Filing Selector + Tree View -->
+    <aside class="panel panel-left" id="panel-left">
+        <div class="panel-header">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                SEC 10-K Filings
+            </h2>
+        </div>
+        <div class="filing-list" id="filing-list">
+            <!-- Populated by JS -->
+        </div>
+        
+        <div class="panel-header" style="margin-top:8px">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Document Tree
+            </h2>
+            <span class="tree-meta" id="tree-meta"></span>
+        </div>
+        <div class="tree-container" id="tree-container">
+            <div class="tree-placeholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                <p>Select a filing to view its<br>hierarchical tree structure</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Right Panel: Query + Pipeline + Answer -->
+    <section class="panel panel-right" id="panel-right">
+        
+        <!-- Query Input -->
+        <div class="query-section">
+            <div class="query-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                Ask a question about the selected filing
+            </div>
+            <div class="query-input-wrapper">
+                <input type="text" id="query-input" placeholder="e.g., What was Apple's total revenue?" 
+                       autocomplete="off" disabled>
+                <button id="query-btn" class="btn-query" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                    <span>Ask</span>
+                </button>
+            </div>
+            <div class="query-examples" id="query-examples">
+                <span class="example-chip" data-q="What was Apple's total net sales/revenue and how does it compare to the prior year?">💰 Revenue</span>
+                <span class="example-chip" data-q="How many employees does Apple have?">👥 Employees</span>
+                <span class="example-chip" data-q="What was the R&D spending?">🔬 R&D Spending</span>
+                <span class="example-chip" data-q="What are the main risk factors mentioned?">⚠️ Risk Factors</span>
+                <span class="example-chip" data-q="What is Apple's gross margin?">📊 Gross Margin</span>
+                <span class="example-chip" data-q="What were the total operating expenses?">📈 Operating Expenses</span>
+            </div>
+        </div>
+
+        <!-- Scrollable content below sticky query -->
+        <div class="panel-right-content">
+
+        <!-- Pipeline Steps (real-time) -->
+        <div class="pipeline-section" id="pipeline-section" style="display:none">
+            <div class="pipeline-header">
+                <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    RAG Pipeline — Live
+                </h3>
+                <span class="pipeline-timer" id="pipeline-timer">0.00s</span>
+            </div>
+            
+            <div class="pipeline-steps" id="pipeline-steps">
+                <!-- Steps populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Answer Section -->
+        <div class="answer-section" id="answer-section" style="display:none">
+            <div class="answer-header">
+                <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Answer
+                </h3>
+                <div class="answer-meta" id="answer-meta"></div>
+            </div>
+            <div class="answer-body" id="answer-body"></div>
+        </div>
+
+        <!-- How It Works (initial state) -->
+        <div class="how-it-works" id="how-it-works">
+            <h3>How Vectorless RAG Works</h3>
+            <div class="how-steps">
+                <div class="how-step">
+                    <div class="how-step-num">1</div>
+                    <div class="how-step-content">
+                        <h4>Tree Structure</h4>
+                        <p>SEC filings are indexed into a hierarchical JSON tree — like a smart table of contents with summaries. No vector embeddings needed.</p>
+                    </div>
+                </div>
+                <div class="how-step">
+                    <div class="how-step-num">2</div>
+                    <div class="how-step-content">
+                        <h4>LLM Reasoning</h4>
+                        <p>When you ask a question, Claude reads the tree structure and <em>reasons</em> about which sections contain the answer — just like a human would.</p>
+                    </div>
+                </div>
+                <div class="how-step">
+                    <div class="how-step-num">3</div>
+                    <div class="how-step-content">
+                        <h4>Targeted Retrieval</h4>
+                        <p>Only the relevant sections are fetched and sent to the LLM — no similarity search, no noisy top-K results.</p>
+                    </div>
+                </div>
+                <div class="how-step">
+                    <div class="how-step-num">4</div>
+                    <div class="how-step-content">
+                        <h4>Grounded Answer</h4>
+                        <p>The final answer is generated solely from the retrieved sections, with precise citations to specific items and line numbers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div><!-- end panel-right-content -->
+    </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

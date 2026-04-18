@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+
+# API keys
+.env
+
+# Usage counter (reset on deploy)
+usage.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# PageIndex git internals (we include the source but not its .git)
+PageIndex/.git/
